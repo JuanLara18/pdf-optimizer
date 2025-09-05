@@ -4,10 +4,10 @@ version = "0.1.0"
 description = "Smart PDF compression tool with multiple strategies"
 authors = ["Juan Lara <larajuand@outlook.com>"]
 readme = "README.md"
-packages = [{include = "pdf_optimizer", from = "."}]
+package-mode = false
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = ">=3.9,!=3.9.7"
 PyMuPDF = "^1.23.0"
 tqdm = "^4.65.0"
 streamlit = "^1.28.0"
