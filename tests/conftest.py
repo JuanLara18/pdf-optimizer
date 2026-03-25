@@ -23,7 +23,9 @@ def large_text_pdf(tmp_path: Path) -> Path:
     for i in range(20):
         page = doc.new_page(width=612, height=792)
         for y in range(72, 750, 16):
-            page.insert_text((72, y), f"Page {i + 1} — line of filler text for compression testing.", fontsize=10)
+            page.insert_text(
+                (72, y), f"Page {i + 1} — line of filler text for compression testing.", fontsize=10
+            )
     doc.save(str(path))
     doc.close()
     return path

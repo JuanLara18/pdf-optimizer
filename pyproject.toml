@@ -1,10 +1,14 @@
 [tool.poetry]
 name = "pdf-optimizer"
 version = "0.1.0"
-description = "Smart PDF compression tool with multiple strategies"
+description = "Smart PDF compression (structural + raster) via CLI and Streamlit UI, built with PyMuPDF."
 authors = ["Juan Lara <larajuand@outlook.com>"]
 readme = "README.md"
-package-mode = false
+license = "MIT"
+packages = [{include = "pdf_compressor.py"}]
+
+[tool.poetry.scripts]
+pdf-optimizer = "pdf_compressor:main"
 
 [tool.poetry.dependencies]
 python = ">=3.9,!=3.9.7"
@@ -23,7 +27,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 line-length = 100
-target-version = ['py38']
+target-version = ['py39']
 
 [tool.flake8]
 max-line-length = 100
