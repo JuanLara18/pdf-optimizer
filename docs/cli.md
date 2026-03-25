@@ -44,6 +44,8 @@ poetry run python pdf_compressor.py paper.pdf --keep-text --verbose
 
 The compressed file is written next to the original with a `_compressed` suffix unless `--output` is specified. The original is never modified.
 
+If every strategy would produce a file **larger** than the input (common with already-optimized or tiny PDFs), the output is replaced with a **byte-for-byte copy** of the original so the saved file never exceeds the source size.
+
 ## Exit codes
 
 | Code | Meaning |

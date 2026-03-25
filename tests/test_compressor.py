@@ -58,6 +58,15 @@ class TestCompression:
         result = c.compress_pdf(large_text_pdf, out, method="auto")
         assert result.exists()
 
+    @pytest.mark.parametrize("method", ["auto", "simple", "raster"])
+    def test_output_never_larger_than_input(self, sample_pdf: Path, tmp_path: Path, method: str):
+        """Compressed (or fallback) file must not exceed original size."""
+        out = tmp_path / f"out_{method}.pdf"
+        c = PDFCompressor(quality=95, raster_dpi=150)
+        orig_size = sample_pdf.stat().st_size
+        result = c.compress_pdf(sample_pdf, out, method=method)  # type: ignore[arg-type]
+        assert result.stat().st_size <= orig_size
+
 
 class TestValidation:
     def test_missing_file(self, tmp_path: Path):

@@ -38,11 +38,13 @@ KEY PARAMETERS:
 
 OUTPUT:
     Creates a new file with '_compressed' suffix in the same directory.
-    Original file is never modified.
+    Original file is never modified. If no strategy shrinks the file, the output
+    is a copy of the original (size never increases).
 """
 
 import argparse
 import logging
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -163,6 +165,25 @@ class PDFCompressor:
         self.aggressive = aggressive
         self.simple_progress = simple_progress
 
+    def _ensure_output_not_larger_than_original(
+        self, input_path: Path, output_path: Path, original_size: int
+    ) -> None:
+        """If output is larger than the input, replace it with a copy of the input."""
+        if not output_path.exists():
+            return
+        out_size = output_path.stat().st_size
+        if out_size > original_size:
+            logger.warning(
+                "Output (%s) larger than original (%s); keeping original bytes.",
+                self._format_size(out_size),
+                self._format_size(original_size),
+            )
+            shutil.copy2(input_path, output_path)
+
+    def _return_output(self, input_path: Path, output_path: Path, original_size: int) -> Path:
+        self._ensure_output_not_larger_than_original(input_path, output_path, original_size)
+        return output_path
+
     def compress_pdf(
         self,
         input_path: Path,
@@ -196,7 +217,8 @@ class PDFCompressor:
 
         # Fast path for raster-only request
         if method == "raster":
-            return self._compress_with_images(input_path, output_path, original_size)
+            self._compress_with_images(input_path, output_path, original_size)
+            return self._return_output(input_path, output_path, original_size)
 
         # SIMPLE compression attempt (always executed in auto/simple)
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -210,7 +232,8 @@ class PDFCompressor:
                         "Simple compression failed and rasterization disabled / not requested"
                     )
                 logger.info("Falling back to raster compression")
-                return self._compress_with_images(input_path, output_path, original_size)
+                self._compress_with_images(input_path, output_path, original_size)
+                return self._return_output(input_path, output_path, original_size)
 
             simple_size = tmp_simple.stat().st_size
             reduction = (1 - simple_size / original_size) * 100
@@ -224,7 +247,7 @@ class PDFCompressor:
             if method == "simple":
                 logger.info("Method 'simple' requested; saving result")
                 self._finalize_output(tmp_simple, output_path)
-                return output_path
+                return self._return_output(input_path, output_path, original_size)
 
             # AUTO strategy decision
             effective_min = self.min_reduction * (
@@ -236,30 +259,31 @@ class PDFCompressor:
                     + (" (aggressive mode)" if self.aggressive else "")
                 )
                 self._finalize_output(tmp_simple, output_path)
-                return output_path
+                return self._return_output(input_path, output_path, original_size)
 
             if self.keep_text:
                 logger.info("keep_text=True prevents rasterization. Using simple result.")
                 self._finalize_output(tmp_simple, output_path)
-                return output_path
+                return self._return_output(input_path, output_path, original_size)
 
             if original_size < self.large_pdf_threshold:
                 logger.info(
                     "File below large threshold; skipping rasterization. Using simple result."
                 )
                 self._finalize_output(tmp_simple, output_path)
-                return output_path
+                return self._return_output(input_path, output_path, original_size)
 
             logger.info("Simple compression insufficient for large PDF. Trying raster ...")
             last_simple_reduction = reduction
 
         # Outside tempdir scope now – perform raster
-        return self._multi_pass_raster(
+        self._multi_pass_raster(
             input_path,
             output_path,
             original_size,
             baseline_simple_reduction=locals().get("last_simple_reduction", 0.0),
         )
+        return self._return_output(input_path, output_path, original_size)
 
     def _try_simple_compression(self, input_path: Path, output_path: Path) -> Optional[Path]:
         """Try simple PDF compression without re-rendering."""
